@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sicherheitswahrnehmung in Deutschland – Masterthesis</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+  :root {
+    --bg:#F5F3EE; --surface:#FAFAF8; --border:#DDD9D0;
+    --text:#1A1916; --muted:#6B6760; --light:#9E9B95;
+    --safe:#2D5A3D; --safe-bg:#EAF2EC; --safe-mid:#5A9E70;
+    --unsafe:#7A2020; --unsafe-bg:#F5EAEA; --unsafe-mid:#C05050;
+    --accent:#2C4A8C; --accent-bg:#EEF2FA;
+    --r:12px; --rs:6px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:900;}
+  .logo{font-family:'DM Serif Display',serif;font-size:17px;letter-spacing:-.3px;}
+  .logo span{color:var(--accent);}
+  .pips{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);}
+  .pip{width:28px;height:4px;border-radius:2px;background:var(--border);transition:background .3s;}
+  .pip.on{background:var(--accent);}
+  .pip.done{background:var(--safe-mid);}
+  .main{max-width:860px;margin:0 auto;padding:2.5rem 1.5rem 4rem;}
+  .step{display:none;animation:fi .3s ease;}
+  .step.active{display:block;}
+  @keyframes fi{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2.5rem;margin-bottom:2rem;position:relative;overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:0;right:0;width:200px;height:200px;background:radial-gradient(circle at top right,#EEF2FA,transparent 70%);pointer-events:none;}
+  .eyebrow{font-size:11px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem;}
+  .hero h1{font-family:'DM Serif Display',serif;font-size:2rem;line-height:1.2;margin-bottom:1rem;letter-spacing:-.5px;}
+  .hero p{color:var(--muted);max-width:580px;font-size:14px;line-height:1.7;}
+  .meta{display:flex;gap:1.5rem;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);flex-wrap:wrap;}
+  .meta-i{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;margin-bottom:1.25rem;}
+  .ct{font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:.25rem;}
+  .cd{font-size:13px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;}
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+  .fg{display:flex;flex-direction:column;gap:5px;}
+  .fg label{font-size:12px;font-weight:500;letter-spacing:.3px;color:var(--muted);text-transform:uppercase;}
+  .fg select{background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;font-family:inherit;font-size:14px;color:var(--text);appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236B6760' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;cursor:pointer;transition:border-color .15s;}
+  .fg select:focus{outline:none;border-color:var(--accent);}
+  .mapwrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem;}
+  .maphdr{padding:1.25rem 1.75rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;}
+  .pills{display:flex;gap:8px;flex-shrink:0;}
+  .pill{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid;}
+  .pill.safe{background:var(--safe-bg);color:var(--safe);border-color:#B8D9C2;}
+  .pill.unsafe{background:var(--unsafe-bg);color:var(--unsafe);border-color:#D9B8B8;}
+  .pill .dot{width:8px;height:8px;border-radius:50%;}
+  .pill.safe .dot{background:var(--safe-mid);}
+  .pill.unsafe .dot{background:var(--unsafe-mid);}
+  .sbwrap{padding:.75rem 1.25rem;border-bottom:1px solid var(--border);background:var(--bg);position:relative;}
+  .sbrow{display:flex;gap:8px;align-items:center;position:relative;}
+  .sico{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}
+  .sinput{flex:1;padding:9px 14px 9px 36px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);transition:border-color .15s;}
+  .sinput:focus{outline:none;border-color:var(--accent);}
+  .sbtn{padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--rs);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s;}
+  .sbtn:hover{opacity:.85;}
+  .sres{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);z-index:2000;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(26,25,22,.1);display:none;}
+  .sri{padding:10px 14px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s;line-height:1.4;}
+  .sri:last-child{border-bottom:none;}
+  .sri:hover{background:var(--bg);}
+  .srn{font-weight:500;color:var(--text);}
+  .srd{color:var(--muted);font-size:12px;}
+  #map{height:480px;width:100%;}
+  .maphint{padding:.6rem 1.25rem;background:var(--accent-bg);border-bottom:1px solid #C5D0E8;font-size:12px;color:#2C3D6B;display:flex;align-items:center;gap:8px;}
+  .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(60px);background:#1A1916;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .lrow{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;}
+  .lbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+  .lhdr{padding:.75rem 1rem;border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;}
+  .lhdr.safe{color:var(--safe);background:var(--safe-bg);}
+  .lhdr.unsafe{color:var(--unsafe);background:var(--unsafe-bg);}
+  .lbody{padding:.5rem;min-height:70px;}
+  .lempty{font-size:12px;color:var(--light);padding:.5rem;font-style:italic;}
+  .chip{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 10px;border-radius:var(--rs);font-size:12px;margin-bottom:4px;gap:6px;}
+  .chip.safe{background:var(--safe-bg);color:var(--safe);}
+  .chip.unsafe{background:var(--unsafe-bg);color:var(--unsafe);}
+  .chip .cn{font-weight:500;}
+  .chip .cc{font-size:11px;opacity:.7;font-family:monospace;}
+  .chip button{background:none;border:none;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;opacity:.5;color:inherit;flex-shrink:0;transition:opacity .15s;}
+  .chip button:hover{opacity:1;}
+  .note{background:var(--accent-bg);border:1px solid #C5D0E8;border-left:3px solid var(--accent);border-radius:var(--rs);padding:1rem 1.25rem;margin-bottom:1.25rem;font-size:13px;color:#2C3D6B;line-height:1.7;}
+  .note strong{font-weight:500;display:block;margin-bottom:.25rem;}
+  .warnbox{background:#FEF6E7;border:1px solid #E8D5A3;border-radius:var(--rs);padding:10px 14px;font-size:13px;color:#7A5A1A;display:none;margin-bottom:1rem;}
+  .br{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .btn{padding:11px 22px;border-radius:var(--rs);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid var(--border);background:var(--surface);color:var(--text);}
+  .btn:hover{background:var(--bg);}
+  .btnp{background:var(--text);color:var(--surface);border-color:var(--text);}
+  .btnp:hover{background:#333;}
+  .movl{position:fixed;inset:0;background:rgba(26,25,22,.5);display:flex;align-items:center;justify-content:center;z-index:3000;padding:1rem;backdrop-filter:blur(2px);}
+  .mbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;max-width:400px;width:100%;animation:fi .2s ease;}
+  .mbox h3{font-family:'DM Serif Display',serif;font-size:1.2rem;margin-bottom:.2rem;}
+  .mcoords{font-size:12px;color:var(--light);font-family:monospace;margin-bottom:.75rem;}
+  .msub{font-size:13px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;}
+  .rg{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;}
+  .ro{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;transition:all .15s;font-size:14px;}
+  .ro:hover{border-color:#BBBAB5;background:var(--bg);}
+  .ro input[type=radio]{accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;}
+  .ro.ss{border-color:var(--safe-mid);background:var(--safe-bg);color:var(--safe);}
+  .ro.su{border-color:var(--unsafe-mid);background:var(--unsafe-bg);color:var(--unsafe);}
+  .mnote{font-size:12px;color:var(--light);font-style:italic;margin-bottom:1rem;line-height:1.5;}
+  /* Thank you */
+  .ty{text-align:center;padding:3rem 1rem 2rem;}
+  .tyicon{width:72px;height:72px;border-radius:50%;background:var(--safe-bg);border:1px solid #B8D9C2;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;font-size:28px;}
+  .ty h2{font-family:'DM Serif Display',serif;font-size:2rem;margin-bottom:.75rem;}
+  .ty p{color:var(--muted);max-width:480px;margin:0 auto;font-size:14px;line-height:1.8;}
+  .ty .authors{margin-top:2rem;font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--text);}
+  .ty .authorssub{font-size:12px;color:var(--light);margin-top:.3rem;font-family:'DM Sans',sans-serif;}
+  .credits{margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border);text-align:center;}
+  .credits p{font-size:13px;color:var(--muted);line-height:1.8;}
+  .credits .names{font-family:'DM Serif Display',serif;font-size:18px;color:var(--text);margin-top:.5rem;}
+  .credits .sub{margin-top:.4rem;font-size:12px;color:var(--light);}
+  @media(max-width:580px){
+    .fgrid,.lrow{grid-template-columns:1fr;}
+    .hero{padding:1.5rem;}.hero h1{font-size:1.5rem;}
+    .maphdr{flex-direction:column;}
+    #map{height:320px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<header class="header">
+  <div class="logo">Sicherheits<span>studie</span> DE</div>
+  <div class="pips">
+    <div class="pip on" id="pip1"></div>
+    <div class="pip" id="pip2"></div>
+    <div class="pip" id="pip3"></div>
+    <span id="slab" style="margin-left:4px">Schritt 1 von 2</span>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- STEP 1 -->
+  <div class="step active" id="step1">
+    <div class="hero">
+      <div class="eyebrow">Masterthesis · Subjektive Sicherheitswahrnehmung</div>
+      <h1>Wie sicher fühlen Sie sich<br>an verschiedenen Orten?</h1>
+      <p>Im Rahmen unserer Masterthesis zur subjektiven Sicherheitswahrnehmung im städtischen Raum in Deutschland bitten wir Sie, Orte zu markieren, an denen Sie sich schon mal sicher oder unsicher gefühlt haben.</p>
+      <div class="meta">
+        <div class="meta-i"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#6B6760" stroke-width="1.2"/><path d="M7 4v3.5l2 1.5" stroke="#6B6760" stroke-width="1.2" stroke-linecap="round"/></svg>Ca. 5 Minuten</div>
+        <div class="meta-i"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="1.5" stroke="#6B6760" stroke-width="1.2"/><path d="M5 3V2.5a2 2 0 014 0V3" stroke="#6B6760" stroke-width="1.2"/></svg>Anonym &amp; vertraulich</div>
+        <div class="meta-i"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L8.8 5.2H13L9.6 7.8l1.2 4.2L7 9.5 3.2 12l1.2-4.2L1 5.2h4.2z" stroke="#6B6760" stroke-width="1.2" stroke-linejoin="round"/></svg>Keine richtigen oder falschen Antworten</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Persönliche Angaben</div>
+      <div class="cd">Optionale Angaben zur besseren Einordnung der Daten. Alle Felder sind freiwillig.</div>
+      <div class="fgrid">
+        <div class="fg"><label>Geschlecht</label><select id="gender"><option value="">Keine Angabe</option><option value="m">Männlich</option><option value="f">Weiblich</option><option value="d">Divers</option></select></div>
+        <div class="fg"><label>Altersgruppe</label><select id="age"><option value="">Keine Angabe</option><option value="18-24">18–24 Jahre</option><option value="25-34">25–34 Jahre</option><option value="35-44">35–44 Jahre</option><option value="45-54">45–54 Jahre</option><option value="55-64">55–64 Jahre</option><option value="65+">65+ Jahre</option></select></div>
+        <div class="fg"><label>Wohnort (Bundesland)</label><select id="state"><option value="">Keine Angabe</option><option>Baden-Württemberg</option><option>Bayern</option><option>Berlin</option><option>Brandenburg</option><option>Bremen</option><option>Hamburg</option><option>Hessen</option><option>Mecklenburg-Vorpommern</option><option>Niedersachsen</option><option>Nordrhein-Westfalen</option><option>Rheinland-Pfalz</option><option>Saarland</option><option>Sachsen</option><option>Sachsen-Anhalt</option><option>Schleswig-Holstein</option><option>Thüringen</option></select></div>
+        <div class="fg"><label>Reisehäufigkeit</label><select id="travel"><option value="">Keine Angabe</option><option value="rarely">Selten (1–2× pro Jahr)</option><option value="sometimes">Manchmal (3–6× pro Jahr)</option><option value="often">Regelmäßig (monatlich)</option><option value="very_often">Sehr häufig (wöchentlich)</option></select></div>
+      </div>
+    </div>
+    <div class="br"><button class="btn btnp" onclick="goStep(2)">Weiter zur Karte →</button></div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step" id="step2">
+    <div class="note">
+      <strong>Wichtiger Hinweis zur Teilnahme</strong>
+      Bitte markieren Sie ausschließlich Orte, die Sie <em>persönlich kennen und schon besucht haben</em>. Wählen Sie nur Orte, bei denen Sie ein <em>eindeutiges</em> Sicherheits- oder Unsicherheitsgefühl erlebt haben. Nur authentische Einschätzungen machen diese Studie wertvoll. Vielen Dank für Ihre Sorgfalt.
+    </div>
+    <div class="mapwrap">
+      <div class="maphdr">
+        <div>
+          <div class="ct">Standorte markieren</div>
+          <div class="cd" style="margin-bottom:0">Suchen Sie einen Ort oder klicken Sie direkt auf die Karte. Mindestens je 2 pro Kategorie.</div>
+        </div>
+        <div class="pills">
+          <div class="pill safe"><div class="dot"></div>Sicher: <span id="cnt-safe">0</span></div>
+          <div class="pill unsafe"><div class="dot"></div>Unsicher: <span id="cnt-unsafe">0</span></div>
+        </div>
+      </div>
+      <div class="sbwrap">
+        <div class="sbrow">
+          <svg class="sico" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="#9E9B95" stroke-width="1.4"/><path d="M10 10L13.5 13.5" stroke="#9E9B95" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <input class="sinput" type="text" id="sinput" placeholder="Ort, Straße oder Stadtteil suchen …" autocomplete="off">
+          <button class="sbtn" id="sbtnEl">Suchen</button>
+        </div>
+        <div class="sres" id="sres"></div>
+      </div>
+      <div class="maphint">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#2C4A8C" stroke-width="1.2"/><path d="M7 6v4M7 4.2v.1" stroke="#2C4A8C" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Klicks außerhalb Deutschlands werden automatisch blockiert. Die Koordinaten sind exakte GPS-Daten (WGS84).
+      </div>
+      <div id="map"></div>
+    </div>
+    <div class="lrow">
+      <div class="lbox">
+        <div class="lhdr safe"><svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="#5A9E70"/></svg>Sichere Orte (min. 2)</div>
+        <div class="lbody" id="safe-list"><div class="lempty">Noch keine Orte markiert</div></div>
+      </div>
+      <div class="lbox">
+        <div class="lhdr unsafe"><svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="#C05050"/></svg>Unsichere Orte (min. 2)</div>
+        <div class="lbody" id="unsafe-list"><div class="lempty">Noch keine Orte markiert</div></div>
+      </div>
+    </div>
+    <div class="note">
+      <strong>Bitte denken Sie daran</strong>
+      Markieren Sie nur Orte, die Sie <strong>selbst besucht haben</strong> und bei denen das Gefühl <strong>eindeutig</strong> war. Unklare oder neutrale Eindrücke bitte weglassen.
+    </div>
+    <div class="warnbox" id="warnbox"></div>
+    <div class="br">
+      <button class="btn" onclick="goStep(1)">← Zurück</button>
+      <button class="btn btnp" onclick="trySubmit()">Antworten abschicken →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step" id="step3">
+    <div class="ty">
+      <div class="tyicon">✓</div>
+      <h2>Vielen Dank!</h2>
+      <p>Ihre Antworten wurden erfolgreich gespeichert und fließen in unsere Masterthesis ein. Ihre ehrlichen Einschätzungen sind ein wertvoller Beitrag zur Forschung zur subjektiven Sicherheitswahrnehmung im städtischen Raum.</p>
+      <div class="authors">Ben Herrmann &amp; Tom Daan Wolbert</div>
+      <div class="authorssub">Masterthesis · Subjektive Sicherheitswahrnehmung im städtischen Raum · Deutschland</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Modal -->
+<div class="movl" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="mbox">
+    <h3 id="mtitle">Standort bewerten</h3>
+    <div class="mcoords" id="mcoords"></div>
+    <div class="msub">Sie kennen diesen Ort und waren dort. Wie haben Sie sich dort gefühlt?</div>
+    <div class="rg">
+      <label class="ro" id="osafe" onclick="pickFeel('safe')"><input type="radio" name="feel" value="safe"> Sicher gefühlt</label>
+      <label class="ro" id="ounsafe" onclick="pickFeel('unsafe')"><input type="radio" name="feel" value="unsafe"> Unsicher gefühlt</label>
+    </div>
+    <div class="mnote">Bitte wählen Sie nur dann, wenn das Gefühl eindeutig war. Bei gemischten Eindrücken: Abbrechen und diesen Ort überspringen.</div>
+    <div class="br">
+      <button class="btn btnp" onclick="confirmLabel()">Bestätigen</button>
+      <button class="btn" onclick="closeModal()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ─── Germany border polygon (ray-casting, WGS84) ─────────────────────────────
+const DE_POLY = [
+  [54.83,9.44],[54.67,9.55],[54.50,9.95],[54.33,10.13],[54.17,10.22],
+  [54.09,12.04],[54.17,13.75],[53.97,14.12],[53.97,14.40],
+  [53.34,14.41],[52.96,14.61],[52.36,14.55],[51.84,14.75],[51.56,14.93],
+  [51.07,14.98],[50.87,14.32],[50.52,12.95],[50.38,12.44],
+  [50.18,12.21],[49.97,12.48],[49.57,13.42],
+  [48.97,13.84],[48.56,13.45],[47.97,13.03],[47.69,12.92],
+  [47.58,12.20],[47.44,11.13],[47.54,10.46],[47.57,9.64],
+  [47.67,9.18],[47.74,8.68],[47.70,8.23],[47.68,8.10],
+  [47.71,7.97],[47.64,7.89],[47.61,7.72],[47.60,7.61],
+  [47.59,7.59],
+  [47.63,7.56],[47.74,7.52],[47.90,7.56],[48.07,7.56],[48.25,7.56],
+  [48.57,7.79],[48.83,8.05],[48.97,8.22],
+  [49.32,8.18],[49.23,8.12],[49.18,7.38],[49.07,6.86],
+  [49.46,6.37],[49.67,6.20],[49.92,6.15],[50.13,6.04],
+  [50.33,6.10],[50.57,6.00],
+  [51.04,5.87],[51.50,5.99],[51.84,6.10],
+  [52.10,6.91],[52.54,7.20],[53.27,7.21],[53.49,7.02],
+  [53.69,7.92],[54.06,8.60],[54.33,8.67],
+  [54.83,9.44]
+];
+
+function pointInGermany(lat, lng) {
+  let inside = false;
+  for (let i = 0, j = DE_POLY.length - 1; i < DE_POLY.length; j = i++) {
+    const [yi, xi] = DE_POLY[i], [yj, xj] = DE_POLY[j];
+    if ((yi > lat) !== (yj > lat)) {
+      const xInt = xi + (lat - yi) / (yj - yi) * (xj - xi);
+      if (lng < xInt) inside = !inside;
+    }
+  }
+  return inside;
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const MIN = 2;
+let map, labels = {}, feel = null, pLat = null, pLng = null, pName = null;
+let stimer = null, sdata = [];
+
+function showToast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ─── Map ──────────────────────────────────────────────────────────────────────
+function initMap() {
+  if (map) return;
+  map = L.map('map', { zoomControl:true, minZoom:5, maxZoom:19 }).setView([51.1657,10.4515], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:19
+  }).addTo(map);
+
+  map.on('click', async function(e) {
+    const lat = e.latlng.lat, lng = e.latlng.lng;
+    if (!pointInGermany(lat, lng)) {
+      showToast('Nur Orte in Deutschland können markiert werden.');
+      return;
+    }
+    await fetchNameAndOpen(lat, lng);
+  });
+
+  const si = document.getElementById('sinput');
+  si.addEventListener('input', () => {
+    clearTimeout(stimer);
+    const q = si.value.trim();
+    if (q.length < 3) { hideSR(); return; }
+    stimer = setTimeout(() => doFetch(q), 400);
+  });
+  si.addEventListener('keydown', e => { if (e.key==='Enter') doFetch(si.value.trim()); });
+  document.getElementById('sbtnEl').addEventListener('click', () => doFetch(si.value.trim()));
+  document.addEventListener('click', e => { if (!e.target.closest('.sbwrap')) hideSR(); });
+}
+
+function mkIcon(type) {
+  const c = type==='safe' ? '#5A9E70' : '#C05050';
+  return L.divIcon({
+    html:`<div style="width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.28)"></div>`,
+    iconSize:[20,20], iconAnchor:[10,20], className:''
+  });
+}
+
+async function fetchNameAndOpen(lat, lng) {
+  let name = `${lat.toFixed(4)}°N, ${lng.toFixed(4)}°O`;
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=17&addressdetails=1`,
+      { headers:{'Accept-Language':'de'} }
+    );
+    const d = await r.json();
+    if (d && d.address) {
+      const a = d.address;
+      const parts = [a.road, a.suburb||a.neighbourhood, a.city||a.town||a.village].filter(Boolean);
+      if (parts.length) name = parts.join(', ');
+    }
+  } catch(e) {}
+  openModal(name, lat, lng);
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function openModal(name, lat, lng) {
+  pName=name; pLat=lat; pLng=lng; feel=null;
+  document.getElementById('mtitle').textContent = name;
+  document.getElementById('mcoords').textContent = `${lat.toFixed(6)}° N,  ${lng.toFixed(6)}° O`;
+  document.querySelectorAll('input[name="feel"]').forEach(r=>r.checked=false);
+  document.getElementById('osafe').className='ro';
+  document.getElementById('ounsafe').className='ro';
+  document.getElementById('modal').style.display='flex';
+}
+
+function pickFeel(v) {
+  feel=v;
+  document.getElementById('osafe').className='ro'+(v==='safe'?' ss':'');
+  document.getElementById('ounsafe').className='ro'+(v==='unsafe'?' su':'');
+  document.querySelector(`input[name="feel"][value="${v}"]`).checked=true;
+}
+
+function closeModal() {
+  document.getElementById('modal').style.display='none';
+  pLat=null; pLng=null; pName=null; feel=null;
+}
+
+function confirmLabel() {
+  if (!feel||pLat===null){showToast('Bitte wählen Sie eine Kategorie.');return;}
+  const id='p'+Date.now();
+  const marker=L.marker([pLat,pLng],{icon:mkIcon(feel)}).addTo(map);
+  marker.bindPopup(`<b>${pName}</b><br><small>${pLat.toFixed(5)}° N, ${pLng.toFixed(5)}° O</small>`);
+  labels[id]={feel,lat:pLat,lng:pLng,name:pName,marker};
+  updateLists();
+  closeModal();
+}
+
+function removeLabel(id) {
+  if (labels[id]?.marker) map.removeLayer(labels[id].marker);
+  delete labels[id]; updateLists();
+}
+
+function updateLists() {
+  const se=Object.entries(labels).filter(([,v])=>v.feel==='safe');
+  const ue=Object.entries(labels).filter(([,v])=>v.feel==='unsafe');
+  const rend=(entries,type)=>{
+    if(!entries.length) return '<div class="lempty">Noch keine Orte markiert</div>';
+    return entries.map(([id,v])=>
+      `<div class="chip ${type}">
+        <div>
+          <div class="cn">${v.name}</div>
+          <div class="cc">${v.lat.toFixed(5)}° N, ${v.lng.toFixed(5)}° O</div>
+        </div>
+        <button onclick="removeLabel('${id}')">×</button>
+      </div>`
+    ).join('');
+  };
+  document.getElementById('safe-list').innerHTML=rend(se,'safe');
+  document.getElementById('unsafe-list').innerHTML=rend(ue,'unsafe');
+  document.getElementById('cnt-safe').textContent=se.length;
+  document.getElementById('cnt-unsafe').textContent=ue.length;
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+async function doFetch(q) {
+  if (!q||q.length<2) return;
+  try {
+    const r=await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=de&limit=6&addressdetails=1`,
+      {headers:{'Accept-Language':'de'}}
+    );
+    sdata=await r.json(); renderSR(sdata);
+  } catch(e){hideSR();}
+}
+
+function renderSR(data) {
+  const box=document.getElementById('sres');
+  if(!data.length){box.innerHTML='<div class="sri"><span class="srn">Kein Ergebnis</span></div>';box.style.display='block';return;}
+  box.innerHTML=data.map((r,i)=>{
+    const a=r.address;
+    const det=[a.road,a.suburb,a.city||a.town||a.village,a.state].filter(Boolean).join(', ');
+    return `<div class="sri" onclick="pickSR(${i})"><div class="srn">${r.display_name.split(',')[0]}</div><div class="srd">${det}</div></div>`;
+  }).join('');
+  box.style.display='block';
+}
+function hideSR(){document.getElementById('sres').style.display='none';}
+
+function pickSR(i) {
+  const r=sdata[i];
+  const lat=+r.lat, lng=+r.lon;
+  const name=r.display_name.split(',').slice(0,2).join(', ');
+  map.setView([lat,lng],17);
+  document.getElementById('sinput').value=''; hideSR();
+  openModal(name,lat,lng);
+}
+
+// ─── Steps ────────────────────────────────────────────────────────────────────
+function goStep(n) {
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('step'+n).classList.add('active');
+  ['pip1','pip2','pip3'].forEach((id,i)=>{
+    document.getElementById(id).className='pip'+(i+1<n?' done':i+1===n?' on':'');
+  });
+  document.getElementById('slab').textContent=n<3?`Schritt ${n} von 2`:'Abgeschlossen';
+  window.scrollTo({top:0,behavior:'smooth'});
+  if (n===2) setTimeout(initMap,100);
+  if (n===3) saveEntry();
+}
+
+function trySubmit() {
+  const sn=Object.values(labels).filter(v=>v.feel==='safe').length;
+  const un=Object.values(labels).filter(v=>v.feel==='unsafe').length;
+  const w=document.getElementById('warnbox');
+  if(sn<MIN||un<MIN){
+    w.style.display='block';
+    w.textContent=`Bitte markieren Sie mindestens ${MIN} sichere (aktuell: ${sn}) und ${MIN} unsichere Orte (aktuell: ${un}).`;
+    w.scrollIntoView({behavior:'smooth',block:'center'});return;
+  }
+  w.style.display='none'; goStep(3);
+}
+
+function saveEntry() {
+  const entry={
+    id:Date.now(), timestamp:new Date().toISOString(),
+    demographics:{
+      gender:document.getElementById('gender').value||null,
+      age_group:document.getElementById('age').value||null,
+      state:document.getElementById('state').value||null,
+      travel_frequency:document.getElementById('travel').value||null
+    },
+    locations:Object.values(labels).map(v=>({name:v.name,lat:v.lat,lng:v.lng,label:v.feel}))
+  };
+  const all=JSON.parse(localStorage.getItem('survey_v6')||'[]');
+  all.push(entry);
+  localStorage.setItem('survey_v6',JSON.stringify(all));
+}
+</script>
+</body>
+</html>
