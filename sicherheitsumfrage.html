@@ -300,6 +300,10 @@ function pointInGermany(lat, lng) {
 
 // ─── App state ────────────────────────────────────────────────────────────────
 const MIN = 2;
+
+// Generate a unique ID once per browser session – identifies one participant
+const PARTICIPANT_ID = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+
 let map, labels = {}, feel = null, pLat = null, pLng = null, pName = null;
 let stimer = null, sdata = [];
 
@@ -488,8 +492,9 @@ async function trySubmit() {
     travel_frequency: document.getElementById('travel').value || null,
   };
 
-  // Build one row per location
+  // Build one row per location – all rows share the same participant_id
   const rows = Object.values(labels).map(v => ({
+    participant_id: PARTICIPANT_ID,
     ...demo,
     location_name: v.name,
     lat:           v.lat,
